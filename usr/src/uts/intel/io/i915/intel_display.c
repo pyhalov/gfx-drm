@@ -4327,14 +4327,17 @@ static void i9xx_update_pll_dividers(struct intel_crtc *crtc,
 	}
 
 	I915_WRITE(FP0(pipe), fp);
+	crtc->config.dpll_hw_state.fp0 = fp;
 
 	crtc->lowfreq_avail = false;
 	if (intel_pipe_has_type(&crtc->base, INTEL_OUTPUT_LVDS) &&
 	    reduced_clock && i915_powersave) {
 		I915_WRITE(FP1(pipe), fp2);
+		crtc->config.dpll_hw_state.fp1 = fp2;
 		crtc->lowfreq_avail = true;
 	} else {
 		I915_WRITE(FP1(pipe), fp);
+		crtc->config.dpll_hw_state.fp1 = fp;
 	}
 }
 
@@ -4509,6 +4512,8 @@ static void vlv_update_pll(struct intel_crtc *crtc)
 		dpll |= DPLL_INTEGRATED_CRI_CLK_VLV;
 
 	dpll |= DPLL_VCO_ENABLE;
+	crtc->config.dpll_hw_state.dpll = dpll;
+
 	I915_WRITE(DPLL(pipe), dpll);
 	POSTING_READ(DPLL(pipe));
 	udelay(150);
@@ -4518,6 +4523,8 @@ static void vlv_update_pll(struct intel_crtc *crtc)
 
 	dpll_md = (crtc->config.pixel_multiplier - 1)
 		<< DPLL_MD_UDI_MULTIPLIER_SHIFT;
+	crtc->config.dpll_hw_state.dpll_md = dpll_md;
+
 	I915_WRITE(DPLL_MD(pipe), dpll_md);
 	POSTING_READ(DPLL_MD(pipe));
 
@@ -4596,6 +4603,8 @@ static void i9xx_update_pll(struct intel_crtc *crtc,
 		dpll |= PLL_REF_INPUT_DREFCLK;
 
 	dpll |= DPLL_VCO_ENABLE;
+	crtc->config.dpll_hw_state.dpll = dpll;
+
 	I915_WRITE(DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
 	POSTING_READ(DPLL(pipe));
 	udelay(150);
@@ -4616,6 +4625,8 @@ static void i9xx_update_pll(struct intel_crtc *crtc,
 	if (INTEL_INFO(dev)->gen >= 4) {
 		u32 dpll_md = (crtc->config.pixel_multiplier - 1)
 			<< DPLL_MD_UDI_MULTIPLIER_SHIFT;
+		crtc->config.dpll_hw_state.dpll_md = dpll_md;
+
 		I915_WRITE(DPLL_MD(pipe), dpll_md);
 	} else {
 		/* The pixel multiplier can only be updated once the
@@ -4660,6 +4671,8 @@ static void i8xx_update_pll(struct intel_crtc *crtc,
 		dpll |= PLL_REF_INPUT_DREFCLK;
 
 	dpll |= DPLL_VCO_ENABLE;
+	crtc->config.dpll_hw_state.dpll = dpll;
+
 	I915_WRITE(DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
 	POSTING_READ(DPLL(pipe));
 	udelay(150);
@@ -5013,6 +5026,7 @@ static bool i9xx_get_pipe_config(struct intel_crtc *crtc,
 		pipe_config->pixel_multiplier =
 			((tmp & DPLL_MD_UDI_MULTIPLIER_MASK)
 			 >> DPLL_MD_UDI_MULTIPLIER_SHIFT) + 1;
+		pipe_config->dpll_hw_state.dpll_md = tmp;
 	} else if (IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev)) {
 		tmp = I915_READ(DPLL(crtc->pipe));
 		pipe_config->pixel_multiplier =
@@ -5023,6 +5037,11 @@ static bool i9xx_get_pipe_config(struct intel_crtc *crtc,
 		 * port and will be fixed up in the encoder->get_config
 		 * function. */
 		pipe_config->pixel_multiplier = 1;
+	}
+	pipe_config->dpll_hw_state.dpll = I915_READ(DPLL(crtc->pipe));
+	if (!IS_VALLEYVIEW(dev)) {
+		pipe_config->dpll_hw_state.fp0 = I915_READ(FP0(crtc->pipe));
+		pipe_config->dpll_hw_state.fp1 = I915_READ(FP1(crtc->pipe));
 	}
 
 	return true;
@@ -8181,6 +8200,7 @@ intel_pipe_config_compare(struct drm_device *dev,
 
 	PIPE_CONF_CHECK_I(shared_dpll);
 	PIPE_CONF_CHECK_X(dpll_hw_state.dpll);
+	PIPE_CONF_CHECK_X(dpll_hw_state.dpll_md);
 	PIPE_CONF_CHECK_X(dpll_hw_state.fp0);
 	PIPE_CONF_CHECK_X(dpll_hw_state.fp1);
 
